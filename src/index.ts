@@ -44,5 +44,19 @@ const addTodo = async ({ title, description, userId }: Todo) => {
   }
 };
 
+const getTodos = async (userId: number) => {
+  try {
+    const res = await prisma.todo.findMany({
+      where: {
+        userId,
+      },
+    });
+    console.log(res);
+  } catch (error) {
+    console.error("Error fetching todos", error);
+  }
+};
+
 // createUser({ username: "kamrank", password: "myPass" });
-addTodo({ title: "Go to gym", description: "Please go to the gym", userId: 1 });
+// addTodo({ title: "Go to gym", description: "Please go to the gym", userId: 1 });
+getTodos(1);

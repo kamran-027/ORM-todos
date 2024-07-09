@@ -42,5 +42,19 @@ const addTodo = (_a) => __awaiter(void 0, [_a], void 0, function* ({ title, desc
         console.error("Error while adding todo", error);
     }
 });
+const getTodos = (userId) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const res = yield prisma.todo.findMany({
+            where: {
+                userId,
+            },
+        });
+        console.log(res);
+    }
+    catch (error) {
+        console.error("Error fetching todos", error);
+    }
+});
 // createUser({ username: "kamrank", password: "myPass" });
-addTodo({ title: "Go to gym", description: "Please go to the gym", userId: 1 });
+// addTodo({ title: "Go to gym", description: "Please go to the gym", userId: 1 });
+getTodos(1);
