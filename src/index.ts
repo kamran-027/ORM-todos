@@ -1,78 +1,86 @@
-import { PrismaClient } from "@prisma/client";
 import express, { Request, Response } from "express";
-import { ITodo } from "./models/ITodo";
+import zod from "zod";
+import { addTodo, addUser, getTodos } from "./common/function";
+import { PrismaClient } from "@prisma/client";
 
 const app = express();
-const prisma = new PrismaClient();
 const port = 3000;
+const prisma = new PrismaClient();
 
 app.use(express.json());
 
-interface User {
-  username: string;
-  password: string;
-}
+const userSchema = zod.object({
+  username: zod.string().min(3),
+  password: zod.string(),
+});
 
-interface Todo {
-  title: string;
-  description?: string;
-  userId: number;
-}
+const todoSchema = zod.object({
+  Title: zod.string().min(3),
+  Description: zod.string().optional(),
+  userId: zod.number(),
+});
 
-//Creating a new user locally
-const createUser = async ({ username, password }: User) => {
-  try {
-    const res = await prisma.user.create({
-      data: {
-        username,
-        password,
-      },
+app.post("/signup", async (req: Request, res: Response) => {
+  if (!userSchema.safeParse(req.body)) {
+    return res.json({
+      error: "Check the deails again",
     });
-    console.log(res);
-  } catch (error) {
-    console.error("Erro accoured while adding user", error);
   }
-};
 
-//Creating Todo for a user
-const addTodo = async ({ title, description, userId }: Todo) => {
-  try {
-    const res = await prisma.todo.create({
-      data: {
-        Title: title,
-        Description: description,
-        userId: userId,
-      },
+  //Checking for existing users
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      username: req.body.username,
+    },
+  });
+
+  if (existingUser) {
+    return res.json({
+      error: "User already exists",
     });
-    console.log(res);
-  } catch (error) {
-    console.error("Error while adding todo", error);
   }
-};
 
-//Get Todos for specific user
-const getTodos = async (userId: number) => {
-  try {
-    const res = await prisma.todo.findMany({
-      where: {
-        userId,
-      },
+  const userId = await addUser(req.body);
+
+  res.json({ message: `User with id ${userId} created successfully!` });
+});
+
+app.post("/addTodo", async (req: Request, res: Response) => {
+  if (!todoSchema.safeParse(req.body)) {
+    return res.json({
+      error: "Please check the details again",
     });
-    console.log(res);
-    return res;
-  } catch (error) {
-    console.error("Error fetching todos", error);
   }
-};
 
-// createUser({ username: "kamrank", password: "myPass" });
-// addTodo({ title: "Go to gym", description: "Please go to the gym", userId: 1 });
-// getTodos(1);
+  await addTodo(req.body);
 
-app.post("/getTodos", async (req: Request, res: Response) => {
-  const response: ITodo[] = (await getTodos(Number(req.query.userId))) ?? [];
+  res.json({
+    message: "Todo added successfully!",
+  });
+});
 
-  res.json(response);
+app.get("/getTodos/:userId", async (req: Request, res: Response) => {
+  const userId = Number(req.params.userId);
+
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      id: userId,
+    },
+  });
+
+  console.log(existingUser);
+
+  if (!existingUser) {
+    return res.json({
+      error: "User does not exist",
+    });
+  }
+
+  const todos = await getTodos(userId);
+
+  res.status(200).json({
+    todos: todos,
+  });
 });
 
 app.listen(port, () => {
